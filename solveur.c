@@ -5,18 +5,18 @@ typedef struct solveur_t{
 	int M;			// Nombre de ligne
 	int N;			// Nombre de colonne
 	int D; 			// Nombre d'itération
-	double* T;		// Tableau 3D 
-	double* moy;	// Moyenne 
-	double Tin;		// Température dans le rectangle
-	double Tout;	// Température sur les bord
+	float* T;		// Tableau 3D 
+	float* moy;	// Moyenne 
+	float Tin;		// Température dans le rectangle
+	float Tout;	// Température sur les bord
 };
 */
 
 
 
-void creer_solveur(solveur_t* S , int Duree , int M_ligne, int N_colonne,double Tin , double Tout){
+void creer_solveur(solveur_t* S , int Duree , int M_ligne, int N_colonne,float Tin , float Tout){
 	int i,j,k;
-	double tmpCoef[9] = {0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625};
+	float tmpCoef[9] = {0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625};
 	S->D = Duree;
 	S->M = M_ligne;
 	S->N = N_colonne;
@@ -24,9 +24,9 @@ void creer_solveur(solveur_t* S , int Duree , int M_ligne, int N_colonne,double 
 	S->Tout = Tout;
 	S->T = NULL;
 	S->moy = NULL;
-	S->moy = (double*)malloc(sizeof(double) * S->D);
-	S->T = (double*)malloc(sizeof(double) * 2 * S->M * S->N);
-	S->coef = (double*)malloc(sizeof(double) * 9);
+	S->moy = (float*)malloc(sizeof(float) * S->D);
+	S->T = (float*)malloc(sizeof(float) * 2 * S->M * S->N);
+	S->coef = (float*)malloc(sizeof(float) * 9);
 	for(i = 0 ; i < 9; i++)
 		S->coef[i] = tmpCoef[i];
 
@@ -72,7 +72,7 @@ void afficher_solveur(solveur_t* S){
 
 void afficher_solveur_indice(solveur_t* S, int temps){
 	int i,j;
-	double total = 0;
+	float total = 0;
 	for(i = 0 ; i < S->M ; i++){
 		for(j = 0 ; j < S->N ; j++){
 			total += S->T[geti(S,temps % 2,i,j)];
@@ -85,40 +85,18 @@ void afficher_solveur_indice(solveur_t* S, int temps){
 
 /*!
 */
-void solve_solveur(solveur_t* S){
-	int i,j,k,l,m, nImage = 0, frequence;
-	double* tmp;
-	bitmap_t image;
+void solve_solveur(solveur_t* S, CvMat* mat){
+	int i,j,k,l,m, frequence;
+	float* tmp;
 	char chemin[30];
 
 	frequence = S->D > 100 ? S->D / 100 : S->D;
-	image.width = S->M;
-	image.height = S->N;
-	image.pixels = calloc(image.width * image.height, sizeof(pixel_t));
-	pixel_t* pixel;
 	//S->T[geti(S,0,S->M / 2 , S->M / 2 )] = S->Tout;
-#pragma omp parallel for collapse(2) schedule(dynamic) private(pixel, tmp)
-	for(i = 0; i < S->M; i++)
-	{
-		for(j = 0; j < S->N; j++)
-		{
-			tmp = &(S->T[geti(S, 0, i, j)]);
-			pixel = pixel_at(&image, i, j);
-			pixel->blue = pix(S->Tout - *tmp * 2, S->Tout);
-			pixel->red = pix(*tmp * 2 - S->Tout, S->Tout);
-			pixel->green = pix(S->Tout - abs(S->Tout * 0.5 - *tmp) * 2, S->Tout);
-			//printf("Valeur : %lf, max : %lf, pixel : %d\n", S->T[ind1], S->Tout, pixel->blue);
-		}
-	}
 
-
-	sprintf(chemin, "image/image000.png");
-	if (save_png_to_file(&image, chemin)) {
-		fprintf(stderr, "Error writing file.\n");
-	}
+	print_img(S->T + geti(S, k % 2, 0,0), mat, S->M, S->N);
 
 	#ifdef OMPON
-#pragma omp parallel private(i, j, k,l, m, pixel, tmp) shared(S, nImage)
+#pragma omp parallel private(i, j, k,l, m, tmp) shared(S)
 	{
 #endif
 	for(k = 1 ; k <= S->D ; k++){
@@ -148,13 +126,6 @@ void solve_solveur(solveur_t* S){
 					}
 				}
 				//printf("Ecriture dans image : %d, %d\n", i, j);
-				if(k%frequence == 0)
-				{
-					pixel = pixel_at(&image, i, j);
-					pixel->blue = pix(S->Tout - *tmp * 2, S->Tout);
-					pixel->red = pix(*tmp * 2 - S->Tout, S->Tout);
-					pixel->green = pix(S->Tout - abs(S->Tout * 0.5 - *tmp) * 2, S->Tout);
-				}
 
 				//printf("Image ecrite\n");
 				//printf("%lf ", S->T[ind1]);
@@ -164,10 +135,7 @@ if(k%frequence == 0)
 		{
 #pragma omp single
 			{
-				sprintf(chemin, "image/image%03d.png", ++nImage);
-				if (save_png_to_file(&image, chemin)) {
-					fprintf(stderr, "Error writing file.\n");
-				}
+				print_img(S->T + geti(S, k % 2, 0,0), mat, S->M, S->N);
 			}
 #pragma omp barrier
 		}
@@ -175,7 +143,6 @@ if(k%frequence == 0)
 	#ifdef OMPON
 	}
 	#endif
-	liberer_image(&image);
 }
 
 //void calculer_moyenne_solveur(solveur_t* S);
@@ -197,7 +164,7 @@ N_max 10000
 D 
 M 
 N
-double T[2][3][4]
+float T[2][3][4]
 0000...............................................................................
 0000...............................................................................
 0000...............................................................................

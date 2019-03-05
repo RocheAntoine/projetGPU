@@ -1,24 +1,20 @@
-EXT = c
-CXX = gcc
-EXEC = main
+CC=gcc -g -O2 -fopenmp
+CXX=g++ -g -O2 -fopenmp
+IOPENCV=-I/home/jmetancelin/coursTools/opencv-3.0.0/include
+LOPENCV=-L/home/jmetancelin/coursTools/opencv-3.0.0/lib -lopencv_core -lopencv_highgui
+MAINS=main
 
-CXXFLAGS = -O3 -fopenmp -pg
-LDFLAGS = -fopenmp -lpng -pg
+all: $(MAINS)
+
+main: main.o solveur.o imageWriter.o
+	$(CXX) $(LOPENCV) $^ -o $@
 
 
-OBJDIR = ./
-SRC = $(wildcard *.$(EXT))
-OBJ = $(SRC:.$(EXT)=.o)
-OBJ := $(addprefix $(OBJDIR)/, $(OBJ))
- 
-all: $(EXEC)
- 
-$(EXEC): $(OBJ)
-	@$(CXX) -o $@ $^ $(LDFLAGS)
- 
-$(OBJDIR)/%.o: %.$(EXT)
-	@$(CXX) -o $@ -c $< $(CXXFLAGS)
- 
+%.o: %.c
+	$(CXX) -c $(IOPENCV) $< -o $@
+
 clean:
-	@rm -rf *.o
-	@rm -f $(EXEC)
+	rm -f  $(MAINS) *.o *.png
+
+clean-img:
+	rm -f *.png
